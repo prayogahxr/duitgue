@@ -91,7 +91,12 @@
             <p><button id="baca" type="submit">Gas, baca</button></p>
           </form>
           <div id="status" role="status" aria-live="polite"></div>
-          <div id="periksa"></div>
+          <!--
+            Alat uji perangkat. Disembunyikan sampai ada berkas yang ditolak —
+            selama semuanya lancar, ini cuma kotak yang tidak pernah dibuka.
+            Bisa juga dipanggil sendiri lewat #periksa di akhir alamat.
+          -->
+          <div id="periksa" hidden></div>
         </section>
 
         <section class="kartu slam" id="tersimpan">

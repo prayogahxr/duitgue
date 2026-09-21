@@ -37,6 +37,7 @@ const elKoreksi = document.querySelector<HTMLElement>('#koreksi')!
 const elProyeksi = document.querySelector<HTMLElement>('#proyeksi')!
 const elSambutan = document.querySelector<HTMLElement>('#sambutan')!
 const elLatar = document.querySelector<HTMLElement>('#latar-catur')!
+const elPeriksa = document.querySelector<HTMLElement>('#periksa')!
 
 const esc = (s: unknown) =>
   String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
@@ -416,6 +417,10 @@ form.addEventListener('submit', async (e) => {
   }
   hasil.ringkasan.fileDitolak = hasil.berkas.filter((f: any) => !f.ok).length
 
+  // Alat uji muncul hanya kalau memang ada yang gagal. Selama semuanya
+  // lancar, dia tidak perlu ada di layar sama sekali.
+  if (hasil.ringkasan.fileDitolak > 0) elPeriksa.hidden = false
+
   const simpan = await simpanHasil(hasil)
   const tersimpan = await gambarTersimpan()
 
@@ -438,4 +443,7 @@ gambarTersimpan().then((t) => {
 amatiGerak()
 
 pasangNav()
-pasangPeriksa(document.querySelector<HTMLElement>('#periksa')!)
+pasangPeriksa(elPeriksa)
+// Bisa dipanggil langsung tanpa harus menunggu ada yang gagal, untuk
+// memeriksa perangkat orang lain dari jauh: tambahkan #periksa di alamat.
+if (location.hash === '#periksa') elPeriksa.hidden = false
