@@ -1,0 +1,27 @@
+# Statement asli — JANGAN PERNAH di-commit
+*.pdf
+test/fixtures/
+
+# Dokumen proses kerja — tetap ada di komputer ini, tidak ikut ke GitHub.
+# ROADMAP.md memuat tahap demi tahap pengerjaan, docs/ARCHITECTURE.md
+# memuat keputusan dan alasannya. Keduanya catatan kerja, bukan bagian dari
+# aplikasi, dan tidak dibutuhkan siapa pun yang cuma mau menjalankan ini.
+#
+# CATATAN: keduanya jadi HANYA ada di komputer ini. Tidak ada salinan di
+# GitHub kalau folder ini hilang.
+ROADMAP.md
+docs/
+
+# Dependensi & build
+node_modules/
+dist/
+.vite/
+
+# Environment
+.env
+.env.*
+
+# Editor & OS
+.vscode/
+.idea/
+.DS_Store

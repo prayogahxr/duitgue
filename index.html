@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      Ikon tab: huruf D dari logo, bukan seluruh wordmark. Wordmark utuh di
+      32px cuma jadi bubur — D-nya masih kebaca. Latarnya putih solid, bukan
+      transparan: garis logonya hitam, dan di tab bar gelap ikon transparan
+      praktis menghilang.
+    -->
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
+    <link rel="icon" href="./favicon.ico" sizes="48x48" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DuitGue — ke mana uangmu pergi</title>
+  </head>
+  <body>
+    <header class="puncak" id="puncak">
+      <div class="puncak-isi">
+        <a class="logo-tautan" href="#atas"><img class="logo" src="./gambar/logo-kecil.png" width="160" height="116" alt="DuitGue" /></a>
+        <!--
+          Tautan seksi disembunyikan selama seksinya kosong. Nav yang menunjuk
+          ke tempat yang belum ada isinya lebih buruk daripada nav yang pendek.
+        -->
+        <nav class="nav" aria-label="Pindah seksi">
+          <a href="#analitik" data-seksi="analitik" hidden>Angka</a>
+          <a href="#proyeksi" data-seksi="proyeksi" hidden>Proyeksi</a>
+          <a href="#koreksi" data-seksi="koreksi" hidden>Kategori</a>
+          <a href="#unggah" data-seksi="unggah">Masukin</a>
+        </nav>
+      </div>
+      <!-- Sejauh mana halaman sudah digulung. Terikat scroll(), bukan JS. -->
+      <div class="garis-maju" aria-hidden="true"><span></span></div>
+    </header>
+
+    <a class="ke-atas" id="ke-atas" href="#atas" aria-label="Balik ke atas" title="Balik ke atas">^</a>
+
+    <!--
+      Lapisan paling belakang: papan catur yang bergeser mengikuti gulungan.
+      Dipasang di `fixed` dengan z-index negatif, jadi dia di bawah seluruh
+      isi halaman dan cuma kelihatan di sela-sela kartu. Baru muncul setelah
+      ada statement yang masuk — sebelum itu layarnya masih kosong dan
+      latar bergerak cuma bikin ramai.
+    -->
+    <div class="latar-catur" id="latar-catur" aria-hidden="true" hidden></div>
+
+    <main id="atas">
+      <!--
+        Dua wajah, satu halaman. Selama belum ada data, yang tampil blok
+        sambutan: apa ini, apa yang dibutuhkan, dan kenapa aman. Begitu ada
+        transaksi tersimpan, blok ini hilang dan angkanya yang mengambil alih —
+        kalimat perkenalan tidak ada gunanya lagi buat orang yang datanya
+        sudah ada di layar.
+      -->
+      <section id="sambutan" class="sambutan">
+        <img class="hias hias-bintang el-bintang" src="./gambar/bintang.png" alt="" aria-hidden="true" />
+        <h1>Duit lo lari ke mana?</h1>
+        <p class="pengantar">Lempar mutasi BCA sama GoPay ke sini. Pindah kantong
+        dipasangin biar nggak kehitung dua kali, sisanya dipecah per kategori.</p>
+        <ul class="poin">
+          <li>Saldo tiap statement dicocokin. Nggak cocok, ditolak.</li>
+          <li>Nggak ada server. Datanya mentok di browser ini, nggak dikirim ke mana pun.</li>
+          <li>Tiga bulan ke atas baru kelihatan polanya.</li>
+        </ul>
+      </section>
+
+      <section id="analitik"></section>
+
+      <section id="proyeksi"></section>
+
+      <div class="kolom">
+        <section class="kartu slam" id="unggah">
+          <img class="hias hias-duit el-duit" src="./gambar/elemen-8.png" alt="" aria-hidden="true" />
+          <h2>Masukin mutasi</h2>
+          <form id="form">
+            <!--
+              Input file bawaan dipakai apa adanya, cuma disembunyikan secara
+              visual — bukan diganti tombol palsu. Label-nya yang membuka
+              pemilih berkas, jadi keyboard dan pembaca layar tetap dapat
+              kontrol yang sebenarnya.
+            -->
+            <div class="jatuh" id="jatuh">
+              <input id="berkas" type="file" accept="application/pdf,.pdf" multiple />
+              <label for="berkas" class="tombol-berkas">Pilih PDF</label>
+              <span id="nama-berkas" class="sekunder">atau tarik ke sini</span>
+            </div>
+            <p id="sandi-blok" hidden>
+              <label for="sandi">Ada yang dikunci. Isi sandinya.</label>
+              <input id="sandi" type="password" autocomplete="off" />
+            </p>
+            <p><button id="baca" type="submit">Gas, baca</button></p>
+          </form>
+          <div id="status" role="status" aria-live="polite"></div>
+        </section>
+
+        <section class="kartu slam" id="tersimpan">
+          <img class="hias hias-asterisk el-asterisk" src="./gambar/elemen-5.png" alt="" aria-hidden="true" />
+          <h2>Yang udah kesimpan</h2>
+          <div id="isi-tersimpan">memuat…</div>
+          <p class="aksi-hapus">
+            <button id="hapus" type="button">Hapus semua</button>
+            <span id="konfirmasi-hapus" hidden>
+              Semua transaksi sama riwayat unggahan ilang. Nggak bisa dibalikin.
+              <button id="hapus-yakin" type="button">Iya, hapus aja</button>
+              <button id="hapus-batal" type="button">Batal</button>
+            </span>
+          </p>
+        </section>
+      </div>
+
+      <section id="koreksi"></section>
+
+      <div id="hasil"></div>
+    </main>
+
+    <footer class="kaki">
+      <p class="kaki-nama">Created by Prayoga</p>
+      <p class="kaki-tautan">
+        <!--
+          rel="noopener noreferrer": tab yang dibuka tidak boleh memegang
+          referensi balik ke halaman ini, dan tidak perlu tahu dari mana
+          pengunjungnya datang.
+        -->
+        <a href="https://github.com/prayogahxr" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://instagram.com/prygavwv" target="_blank" rel="noopener noreferrer">Instagram</a>
+      </p>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

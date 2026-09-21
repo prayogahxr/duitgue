@@ -1,0 +1,35 @@
+# Header untuk host static (Cloudflare Pages, Netlify). Berkas ini disalin
+# apa adanya ke dist/ oleh Vite.
+#
+# CSP-nya sendiri sudah ikut di dalam <meta> hasil build, jadi kebijakan itu
+# tetap berlaku ke mana pun halaman ini dipindahkan — termasuk kalau dibuka
+# dari berkas lokal. Yang di sini hal-hal yang memang tidak bisa disetel
+# lewat <meta>.
+
+/*
+  # Kebijakan yang sama dengan <meta> di dalam halaman, plus frame-ancestors
+  # yang cuma berlaku kalau datang sebagai header. Keduanya dipasang dengan
+  # sengaja: yang di <meta> ikut ke mana pun berkasnya dibawa, yang di sini
+  # menutup pembingkaian.
+  Content-Security-Policy: default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  # Halaman ini tidak boleh dibingkai situs lain. Tanpa ini, orang bisa
+  # menaruhnya di dalam iframe dan menumpuk tampilan palsu di atasnya.
+  X-Frame-Options: DENY
+  # Jangan pernah membocorkan URL halaman ini ke situs lain.
+  Referrer-Policy: no-referrer
+  # Browser tidak boleh menebak tipe berkas.
+  X-Content-Type-Options: nosniff
+  # Tidak ada satu pun perangkat yang dibutuhkan halaman ini.
+  Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=(), interest-cohort=()
+  # Isolasi asal: tab lain tidak bisa memegang referensi ke halaman ini.
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+
+# Berkas berisi hash di namanya, aman disimpan lama.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Halamannya sendiri jangan disimpan lama — kalau tidak, orang bisa terus
+# memakai versi lama setelah ada perbaikan parser.
+/index.html
+  Cache-Control: no-cache

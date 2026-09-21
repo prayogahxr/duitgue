@@ -1,0 +1,1234 @@
+/*
+ * Penataan — mengikuti neobrutalism.dev.
+ *
+ * Arah ini menggantikan "brutalism sebagai sikap" yang dipakai sebelumnya;
+ * keputusannya dicatat di docs/ARCHITECTURE.md bagian "Arah desain". Token
+ * diambil dari situs referensinya, bukan ditebak:
+ *
+ *   border      2px solid #000 di tiap elemen
+ *   box-shadow  4px 4px 0 #000, keras, tanpa blur
+ *   radius      5px
+ *   latar       #dcebfe, permukaan #fff
+ *   aksen       #5294ff
+ *   huruf       Pixelify Sans buat teks, Silkscreen buat judul
+ *
+ * Huruf pixel menggantikan DM Sans. Keduanya dibundel lokal lewat
+ * @fontsource, bukan dimuat dari Google Fonts. Berkas fontnya tidak memuat
+ * data transaksi, tapi mengambilnya dari luar tetap mengirim sinyal tiap kali
+ * aplikasi dibuka — dan aturan pertama proyek ini adalah tidak ada apa pun
+ * yang keluar dari perangkat.
+ *
+ * Angka uang TETAP monospace, bukan huruf pixel. Digit harus berbaris antar
+ * baris tabel supaya Rp1.307.700 dan Rp450.000 bisa dibandingkan sekilas;
+ * itu kebutuhan keterbacaan yang tidak ikut ditukar demi gaya.
+ *
+ * Yang TIDAK ikut dari kit itu: stiker miring, marquee yang jalan sendiri,
+ * dan tombol yang bergeser saat ditekan. Larangan "animasi saat halaman
+ * dimuat" sudah dicabut — lihat blok "Elemen hias dan gerak" di bawah.
+ *
+ * Tata letaknya padat dan berkolom, bukan satu kolom panjang: bar judul tetap
+ * di atas, blok sambutan cuma muncul selama belum ada data, dan panel yang
+ * saling melengkapi berdiri berdampingan. Tabel yang jarang dibaca disimpan
+ * di balik <details> supaya halaman bisa dilihat utuh tanpa menggulir jauh.
+ */
+/* Subset latin saja. Paket lengkapnya ikut membawa cyrillic dan yang lain,
+   dan itu 30 kB CSS untuk huruf yang tidak pernah muncul di layar ini. */
+@import '@fontsource/pixelify-sans/latin-400.css';
+@import '@fontsource/pixelify-sans/latin-500.css';
+@import '@fontsource/pixelify-sans/latin-700.css';
+@import '@fontsource/silkscreen/latin-400.css';
+@import '@fontsource/silkscreen/latin-700.css';
+
+:root {
+  --hitam: #000;
+  --putih: #fff;
+  --latar: #dcebfe;
+  --abu: #5b5b5b;
+  --aksen: #5294ff;
+  /* Warna kedua, khusus keadaan yang perlu diperhatikan: validasi gagal,
+     angka negatif, uang yang belum terlihat. Diambil dari palet chart
+     referensinya supaya tidak keluar keluarga. */
+  --awas: #ff4d50;
+  --awas-lembut: #ffe4e4;
+  --kuning: #facc00;
+
+  --radius: 5px;
+  --tebal: 2px;
+  --bayang: 4px 4px 0 0 var(--hitam);
+  --bayang-kecil: 2px 2px 0 0 var(--hitam);
+
+  --teks: 'Pixelify Sans', ui-sans-serif, system-ui, sans-serif;
+  --judul: 'Silkscreen', 'Pixelify Sans', ui-sans-serif, sans-serif;
+  --angka: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  /* Kolom setinggi layar supaya kaki halaman turun ke bawah waktu isinya
+     belum banyak. Tanpa ini, layar kosong menyisakan pita latar sepanjang
+     setengah layar di bawah footer. */
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  /* Bintang hias menonjol keluar dari kotaknya. Tanpa ini, tonjolannya
+     menambah lebar halaman dan memunculkan geseran horizontal. */
+  overflow-x: clip;
+  background: var(--latar);
+  color: var(--hitam);
+  font-family: var(--teks);
+  font-weight: 500;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+main {
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 3rem;
+  /* Mendorong kaki halaman ke bawah selama isinya belum memenuhi layar. */
+  flex: 1 0 auto;
+}
+
+/* --- Bar judul ----------------------------------------------------------- */
+
+/* Nempel di atas. Halaman ini 3-4 ribu piksel dengan empat seksi; tanpa ini
+   satu-satunya cara pindah seksi adalah menggulung terus. */
+.puncak {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--putih);
+  border-bottom: var(--tebal) solid var(--hitam);
+}
+
+/* Bayangan baru muncul setelah halaman digulung — saat di puncak, bar-nya
+   memang bagian dari halaman, tidak perlu mengambang. */
+.puncak.tergulung {
+  box-shadow: 0 4px 0 0 var(--hitam);
+}
+
+.puncak-isi {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+  padding: 0.5rem max(1rem, calc((100vw - 72rem) / 2));
+}
+
+.logo-tautan {
+  display: block;
+  line-height: 0;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.nav a {
+  font-family: var(--judul);
+  font-size: 11px;
+  color: var(--hitam);
+  text-decoration: none;
+  border: var(--tebal) solid transparent;
+  border-radius: var(--radius);
+  padding: 0.25rem 0.5rem;
+}
+
+/* Biru muda saat disentuh, biru penuh saat jadi seksi yang dibaca. Kuning
+   di sini bertabrakan dengan pekerjaannya di halaman ini — kuning dipakai
+   untuk baris total dan hal yang perlu dibaca, bukan untuk sentuhan. */
+.nav a:hover,
+.nav a:focus-visible {
+  border-color: var(--hitam);
+  background: var(--latar);
+  box-shadow: var(--bayang-kecil);
+}
+
+/* Seksi yang sedang dibaca. Ditandai, bukan cuma diberi garis bawah. */
+.nav a.aktif {
+  border-color: var(--hitam);
+  background: var(--aksen);
+  box-shadow: var(--bayang-kecil);
+}
+
+/* Yang sedang dibaca TIDAK berubah warna saat disentuh — penandanya tetap
+   penanda, bukan ikut jadi keadaan hover. */
+.nav a.aktif:hover {
+  background: var(--aksen);
+}
+
+/* Sejauh mana halaman digulung. Setebal border, sewarna aksen. */
+.garis-maju {
+  height: 6px;
+  background: var(--latar);
+  border-top: var(--tebal) solid var(--hitam);
+}
+
+.garis-maju span {
+  display: block;
+  height: 100%;
+  background: var(--aksen);
+  transform-origin: 0 50%;
+  scale: 0 1;
+  animation: maju linear both;
+  animation-duration: auto;
+  animation-timeline: scroll(root block);
+}
+
+@keyframes maju {
+  to {
+    scale: 1 1;
+  }
+}
+
+/* Anchor tidak boleh mendarat di balik bar yang nempel. */
+section[id],
+main {
+  scroll-margin-top: 4.5rem;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Balik ke atas. Muncul setelah halaman digulung sejauh satu layar. */
+.ke-atas {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  font-family: var(--judul);
+  font-size: 1rem;
+  text-decoration: none;
+  color: var(--hitam);
+  background: var(--kuning);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  box-shadow: var(--bayang);
+  visibility: hidden;
+  translate: 0 12px;
+}
+
+.ke-atas.terlihat {
+  visibility: visible;
+  translate: 0;
+}
+
+/* Kotak kuning "diproses di perangkat ini" dibuang dari bar judul: dia
+   menempel di tiap layar padahal isinya cuma perlu dibaca sekali, dan
+   mengganggu. Janjinya tetap ada, pindah ke poin blok sambutan. */
+.logo {
+  display: block;
+  height: 40px;
+  width: auto;
+  image-rendering: pixelated;
+}
+
+/* Logo cukup sekali, di bar atas. Dipasang dua kali di satu layar membuat
+   yang kedua terbaca sebagai hiasan, bukan tanda. */
+
+/* Silkscreen sudah kotak dan rapat; tracking negatif membuat pikselnya
+   bertabrakan, jadi dibiarkan normal. */
+h1,
+h2,
+h3 {
+  font-family: var(--judul);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.25;
+  margin: 0 0 0.5rem;
+}
+
+h1 {
+  font-size: clamp(1.4rem, 3.6vw, 2rem);
+  line-height: 1.2;
+}
+
+/* Judul seksi jadi blok, bukan garis. Ini penanda struktur paling khas dari
+   kit ini, dan menggantikan garis pemisah yang dipakai sebelumnya. */
+h2 {
+  font-size: 0.85rem;
+  display: inline-block;
+  background: var(--hitam);
+  color: var(--putih);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  box-shadow: var(--bayang-kecil);
+  padding: 0.2rem 0.6rem;
+  margin: 0 0 0.75rem;
+}
+
+/* Di luar kartu, judul seksi butuh jarak dari blok sebelumnya. */
+section > h2:first-child {
+  margin-top: 0;
+}
+
+#koreksi h2,
+#hasil h2 {
+  margin-top: 1.75rem;
+}
+
+h3 {
+  font-size: 0.8rem;
+  margin-top: 1.25rem;
+}
+
+p {
+  margin: 0 0 0.5rem;
+  max-width: 46rem;
+}
+
+small,
+.sekunder {
+  color: var(--abu);
+  font-weight: 500;
+}
+
+/* --- Sambutan: hanya selama belum ada data ------------------------------- */
+
+.sambutan {
+  background: var(--putih);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  box-shadow: var(--bayang);
+  padding: 1.5rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.sambutan .pengantar {
+  font-size: 1.05rem;
+  max-width: 44rem;
+}
+
+.poin {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.6rem;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.poin li {
+  background: var(--latar);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.7rem;
+  font-size: 14px;
+}
+
+/* --- Angka utama: telanjang, tanpa kotak, tanpa bayangan. ---------------- */
+
+.utama {
+  padding: 0.25rem 0 1rem;
+}
+
+.utama .nilai {
+  font-family: var(--judul);
+  font-size: clamp(2.2rem, 8vw, 4.2rem);
+  font-weight: 700;
+  line-height: 1.05;
+  /* Silkscreen dirancang untuk ukuran kecil; di 4rem huruf-hurufnya
+     berdempet, jadi diberi sedikit jarak. */
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  display: block;
+}
+
+.utama .nilai.negatif {
+  color: var(--awas);
+}
+
+.utama .keterangan {
+  max-width: 34rem;
+  margin-top: 0.5rem;
+}
+
+/* --- Deret angka pendukung, sebaris di layar lebar ----------------------- */
+
+.statistik {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.stat {
+  background: var(--putih);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  box-shadow: var(--bayang);
+  padding: 0.7rem 0.8rem;
+}
+
+.stat.tandai {
+  background: var(--awas-lembut);
+}
+
+.stat .label {
+  display: block;
+  font-family: var(--judul);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.stat .besar {
+  display: block;
+  font-family: var(--judul);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  margin: 0.15rem 0;
+}
+
+.stat .besar.negatif {
+  color: var(--awas);
+}
+
+.stat small {
+  display: block;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+/* --- Dua panel berdampingan --------------------------------------------- */
+
+.kolom {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: 1rem;
+  align-items: start;
+  margin: 1.25rem 0;
+}
+
+.kartu {
+  background: var(--putih);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  box-shadow: var(--bayang);
+  padding: 0.9rem 1rem;
+}
+
+.kartu p:last-child {
+  margin-bottom: 0;
+}
+
+.aksi-hapus {
+  margin-top: 0.75rem;
+}
+
+/* --- Permukaan bertumpuk: kotak putih, garis tegas, bayangan keras. ------ */
+
+.bungkus {
+  overflow-x: auto;
+  background: var(--putih);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  box-shadow: var(--bayang);
+  margin-bottom: 1rem;
+}
+
+/* Di dalam kartu, tabelnya tidak perlu berkotak lagi — dua bingkai bertumpuk
+   cuma menambah tebal tanpa menambah arti. */
+.kartu .bungkus {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0 -1rem;
+  border-top: var(--tebal) solid var(--hitam);
+  border-bottom: var(--tebal) solid var(--hitam);
+}
+
+/* Daftar yang panjangnya tidak bisa ditebak — jumlah merchant ikut tumbuh
+   tiap bulan — digulir di dalam kotaknya sendiri, bukan memanjangkan halaman.
+   Kepala tabelnya ikut menempel supaya kolomnya tidak hilang saat digulir. */
+.bungkus.gulir {
+  max-height: 26rem;
+  overflow-y: auto;
+}
+
+.bungkus.gulir thead th {
+  position: sticky;
+  top: 0;
+  box-shadow: inset 0 -2px 0 0 var(--hitam);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 14px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.3rem 0.55rem;
+  border-bottom: var(--tebal) solid var(--hitam);
+  vertical-align: top;
+}
+
+thead th {
+  background: var(--aksen);
+  color: var(--hitam);
+  font-family: var(--judul);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+tfoot td {
+  background: var(--kuning);
+  border-top: var(--tebal) solid var(--hitam);
+  border-bottom: 0;
+  font-weight: 700;
+}
+
+.angka {
+  font-family: var(--angka);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.negatif {
+  color: var(--awas);
+  font-weight: 700;
+}
+
+.batang {
+  display: block;
+  height: 9px;
+  background: var(--aksen);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  min-width: 6px;
+}
+
+/* --- Yang jarang dibaca: dilipat, bukan dibuang ------------------------- */
+
+details {
+  background: var(--putih);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  box-shadow: var(--bayang);
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+}
+
+summary {
+  cursor: pointer;
+  font-family: var(--judul);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+details[open] summary {
+  margin-bottom: 0.6rem;
+}
+
+details .bungkus,
+details > p:last-child {
+  margin-bottom: 0;
+}
+
+details .bungkus {
+  box-shadow: var(--bayang-kecil);
+}
+
+/* --- Yang belum terlihat: blok berwarna, bukan sekadar baris tabel. ------ */
+
+.belum {
+  background: var(--awas-lembut);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  box-shadow: var(--bayang);
+  padding: 0.8rem 0.9rem;
+  margin: 0 0 1.25rem;
+}
+
+.belum h3 {
+  margin-top: 0;
+}
+
+.belum .bungkus {
+  box-shadow: var(--bayang-kecil);
+  margin-bottom: 0;
+}
+
+.tanda-belum {
+  font-weight: 700;
+}
+
+.ditandai {
+  display: inline-block;
+  background: var(--kuning);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  padding: 0 0.3rem;
+  margin-left: 0.3rem;
+  font-weight: 700;
+  color: var(--hitam);
+}
+
+/* --- Catatan keterbatasan data ------------------------------------------ */
+
+.catatan {
+  background: var(--kuning);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  box-shadow: var(--bayang);
+  padding: 0.6rem 0.8rem;
+  margin: 0 0 1.25rem;
+}
+
+.catatan p:last-child {
+  margin-bottom: 0;
+}
+
+/* --- Formulir ------------------------------------------------------------ */
+
+label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 14px;
+}
+
+label.centang {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+input[type='password'],
+select {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: inherit;
+  background: var(--putih);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  box-shadow: var(--bayang-kecil);
+  padding: 0.3rem 0.4rem;
+  max-width: 100%;
+}
+
+input[type='checkbox'] {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--aksen);
+}
+
+/* --- Pilih berkas -------------------------------------------------------- */
+/* Kontrol bawaan ("Choose Files / No file chosen") tidak bisa digayakan dan
+   tampilannya berbeda di tiap sistem. Yang dilakukan di sini: input-nya tetap
+   input asli, cuma disembunyikan dari mata, dan <label for> yang jadi
+   permukaan yang diklik. Fokus keyboard tetap sampai ke input, jadi
+   kotaknya yang menyala lewat :focus-within. */
+
+.jatuh {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--latar);
+  border: var(--tebal) dashed var(--hitam);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.jatuh input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.jatuh:focus-within {
+  outline: 3px solid var(--hitam);
+  outline-offset: 2px;
+}
+
+/* Saat berkas ditarik ke atasnya. Warna, bukan gerakan. */
+.jatuh.siap {
+  background: var(--kuning);
+  border-style: solid;
+}
+
+.tombol-berkas {
+  display: inline-block;
+  margin: 0;
+  font-family: var(--judul);
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--aksen);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  box-shadow: var(--bayang-kecil);
+  padding: 0.35rem 0.85rem;
+  cursor: pointer;
+}
+
+#nama-berkas {
+  font-size: 13px;
+}
+
+/* --- Slider proyeksi ----------------------------------------------------- */
+
+.setelan {
+  margin-bottom: 1.25rem;
+}
+
+.setelan p:last-child {
+  margin-bottom: 0;
+}
+
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  max-width: 26rem;
+  height: 1.4rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+  height: 0.7rem;
+  background: var(--putih);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+}
+
+input[type='range']::-moz-range-track {
+  height: 0.7rem;
+  background: var(--putih);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+}
+
+/* Bukan tombol yang bergeser saat ditekan — ini pegangan yang memang harus
+   terlihat bisa ditarik, dan bayangannya tetap bayangan keras yang sama. */
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-top: -0.35rem;
+  background: var(--aksen);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  box-shadow: var(--bayang-kecil);
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 1.2rem;
+  height: 1.2rem;
+  background: var(--aksen);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  box-shadow: var(--bayang-kecil);
+}
+
+/* --- Pita rentang proyeksi ----------------------------------------------- */
+/* Satu baris per bulan: batang biru membentang dari jalur buruk ke jalur
+   baik, garis hitam menandai yang tengah. Skalanya sama untuk seluruh baris,
+   jadi melebarnya rentang dari bulan ke bulan terbaca langsung. */
+
+.pita-sel {
+  width: 34%;
+  min-width: 9rem;
+}
+
+.pita {
+  position: relative;
+  display: block;
+  height: 0.85rem;
+  background: var(--latar);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.pita .rentang {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--aksen);
+  min-width: 2px;
+}
+
+.pita .nol {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--abu);
+}
+
+.pita .tengah {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  margin-left: -1px;
+  background: var(--hitam);
+}
+
+button {
+  font: inherit;
+  font-family: var(--judul);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--hitam);
+  background: var(--aksen);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  box-shadow: var(--bayang-kecil);
+  padding: 0.35rem 0.85rem;
+  cursor: pointer;
+}
+
+button[disabled] {
+  color: var(--abu);
+  background: var(--putih);
+  cursor: not-allowed;
+}
+
+#hapus-yakin {
+  background: var(--awas);
+}
+
+select.kategori {
+  font-size: 13px;
+  max-width: 11rem;
+}
+
+:focus-visible {
+  outline: 3px solid var(--hitam);
+  outline-offset: 2px;
+}
+
+/* --- Status per berkas --------------------------------------------------- */
+
+tr.gagal td {
+  background: var(--awas-lembut);
+}
+
+tr.lulus td {
+  background: #e4ffe9;
+}
+
+#status {
+  background: var(--latar);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.6rem;
+  margin-top: 0.75rem;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+#status:empty {
+  display: none;
+}
+
+ul {
+  padding-left: 1.2rem;
+}
+
+/* --- Kaki halaman -------------------------------------------------------- */
+
+.kaki {
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-top: var(--tebal) solid var(--hitam);
+}
+
+.kaki p {
+  margin: 0;
+}
+
+.kaki-nama {
+  font-family: var(--judul);
+  font-size: 12px;
+}
+
+.kaki-tautan {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.kaki-tautan a {
+  font-family: var(--judul);
+  font-size: 11px;
+  color: var(--hitam);
+  text-decoration: none;
+  background: var(--putih);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  box-shadow: var(--bayang-kecil);
+  padding: 0.3rem 0.6rem;
+}
+
+.kaki-tautan a:hover,
+.kaki-tautan a:focus-visible {
+  background: var(--latar);
+}
+
+/* --- Angkat dan tekan ----------------------------------------------------- */
+/*
+ * Diambil dari neubrutalism.com: hover menggeser elemen -2px dan membesarkan
+ * bayangannya, ditekan menggesernya +2px dan menghilangkan bayangannya.
+ *
+ * Bedanya dengan sumbernya: di sana SEMUA kartu ikut terangkat saat
+ * disentuh. Di sini cuma yang benar-benar bisa diklik — tombol, pemilih
+ * berkas, tautan nav, ringkasan yang bisa dibuka, dan tombol balik ke atas.
+ * Kartu angka tidak bisa diklik, jadi tidak boleh berkelakuan seolah bisa.
+ *
+ * "Tombol yang bergeser saat ditekan" dulu ada di daftar larangan. Dicabut —
+ * lihat docs/ARCHITECTURE.md.
+ */
+
+@media (prefers-reduced-motion: no-preference) {
+  button,
+  .tombol-berkas,
+  .ke-atas,
+  .nav a,
+  .kaki-tautan a,
+  summary {
+    transition:
+      translate 100ms ease-out,
+      box-shadow 100ms ease-out;
+  }
+}
+
+button:hover,
+.tombol-berkas:hover,
+.ke-atas:hover,
+.kaki-tautan a:hover {
+  translate: -2px -2px;
+  box-shadow: 6px 6px 0 0 var(--hitam);
+}
+
+button:active,
+.tombol-berkas:active,
+.ke-atas:active,
+.kaki-tautan a:active {
+  translate: 2px 2px;
+  box-shadow: none;
+}
+
+button[disabled]:hover {
+  translate: 0;
+  box-shadow: var(--bayang-kecil);
+}
+
+summary:hover {
+  translate: -1px -1px;
+}
+
+/* --- Elemen hias dan gerak ----------------------------------------------- */
+/*
+ * Gerak di sini SEMUA-nya hiasan, dan itu keputusan sadar: aturan lama
+ * "tanpa animasi kecuali menjawab aksi user" sudah dicabut (lihat
+ * docs/ARCHITECTURE.md). Tiga aturan penggantinya:
+ *
+ *   1. Tidak ada angka yang bergerak. Yang berputar dan bergeser cuma
+ *      gambar hias; saldo, persentase, dan tabel diam di tempat.
+ *   2. Tidak ada yang muncul dari ketiadaan. Blok yang masuk saat digulir
+ *      digeser beberapa piksel, bukan di-fade — isinya kebaca dari awal,
+ *      bahkan kalau JavaScript-nya mati.
+ *   3. Semuanya berhenti total di prefers-reduced-motion.
+ */
+
+.hias {
+  position: absolute;
+  /* Di depan kotaknya, bukan di belakang: ini stiker yang nempel di pojok.
+     Di belakang, yang kelihatan cuma ujung-ujungnya yang nyembul. Aman di
+     depan karena pointer-events dimatikan — tidak ada yang bisa terhalang. */
+  z-index: 2;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Ditarik masuk sedikit. Elemen yang BERPUTAR punya kotak batas yang lebih
+   lebar daripada gambarnya — 110px yang dimiringkan 15 derajat memakan
+   sekitar 150px — jadi offset negatif yang terlihat aman saat diam justru
+   menonjol keluar halaman saat berputar. */
+.hias-bintang {
+  width: clamp(56px, 11vw, 110px);
+  top: -20px;
+  right: 0;
+}
+
+/* Stiker pojok, satu per kartu. Ukurannya sengaja tidak seragam — yang
+   seragam berjajar rapi terbaca sebagai deretan ikon, bukan stiker. */
+.hias-duit {
+  width: clamp(38px, 7vw, 58px);
+  top: -18px;
+  right: -8px;
+}
+
+.hias-asterisk {
+  width: clamp(34px, 6vw, 52px);
+  top: -16px;
+  right: -2px;
+}
+
+.hias-kilau {
+  width: clamp(30px, 5vw, 44px);
+  top: -6px;
+  right: 2px;
+}
+
+.hias-panah {
+  width: clamp(34px, 6vw, 50px);
+  top: -8px;
+  right: 2px;
+}
+
+#unggah,
+#tersimpan,
+#proyeksi,
+#koreksi {
+  position: relative;
+}
+
+.sambutan {
+  position: relative;
+  overflow: visible;
+}
+
+/*
+ * Elemen hias berdiri sendiri-sendiri, tidak disatukan jadi satu pita.
+ * Tiap elemen dapat gerak yang cocok dengan bentuknya — yang berujung banyak
+ * berputar, yang berbentuk panah bergeser ke arah panahnya, yang berbentuk
+ * kilau berkedip. Semuanya `steps()`, tidak ada satu pun yang mulus: gerak
+ * mulus terbaca sebagai loader, gerak patah terbaca sebagai stiker.
+ */
+
+@keyframes putar {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes putar-balik {
+  to {
+    rotate: -360deg;
+  }
+}
+
+@keyframes kedip-kilau {
+  0%,
+  100% {
+    scale: 1;
+  }
+  50% {
+    scale: 0.7;
+  }
+}
+
+@keyframes maju-mundur {
+  0%,
+  100% {
+    translate: 6px 0;
+  }
+  50% {
+    translate: -8px 0;
+  }
+}
+
+@keyframes naik-turun {
+  0%,
+  100% {
+    translate: 0 4px;
+  }
+  50% {
+    translate: 0 -8px;
+  }
+}
+
+@keyframes hanyut {
+  from {
+    translate: -70px 0;
+  }
+  to {
+    translate: 70px 0;
+  }
+}
+
+/* Bintang berduri banyak: berputar penuh, pelan. */
+.el-bintang {
+  animation: putar 9s steps(24, end) infinite;
+}
+
+/* Asterisk: berputar ke arah sebaliknya, lebih cepat, langkah lebih kasar. */
+.el-asterisk {
+  animation: putar-balik 6s steps(12, end) infinite;
+}
+
+/* Kilau: berkedip, tidak berputar. Yang namanya kilau memang berkedip. */
+.el-kilau {
+  animation: kedip-kilau 1.6s steps(4, end) infinite;
+}
+
+/* Panah: bergerak ke arah yang ditunjuknya, lalu balik. */
+.el-panah {
+  animation: maju-mundur 2.4s steps(5, end) infinite;
+}
+
+/* Duit: memantul di tempat. */
+.el-duit {
+  animation: naik-turun 2s steps(4, end) infinite;
+}
+
+/* Papan catur: bukan stiker pojok seperti yang lain, tapi LATAR. Menutup
+   seluruh layar di lapisan paling belakang, dan cuma kelihatan di sela-sela
+   kartu. Satu-satunya yang tidak jalan sendiri — posisinya terikat gulungan
+   halaman, jadi berhenti begitu gulungannya berhenti. */
+.latar-catur {
+  position: fixed;
+  inset: -80px;
+  z-index: -2;
+  pointer-events: none;
+  /* Relatif terhadap berkas CSS ini, bukan terhadap akar domain. Di dev
+     CSS-nya ada di /src/, di hasil build di /assets/ — dua-duanya satu
+     tingkat di bawah akar, jadi ../gambar/ benar di keduanya, termasuk saat
+     seluruh situs disajikan dari subfolder seperti GitHub Pages. */
+  background-image: url('../gambar/kotak-catur.png');
+  background-repeat: repeat;
+  /* Ubin besar dan tipis: yang dicari tekstur di sela-sela kartu, bukan
+     karpet. Di 0,45 dengan ubin 120px, teks yang duduk langsung di atas
+     latar jadi susah dibaca. */
+  background-size: 168px auto;
+  opacity: 0.16;
+  animation: hanyut linear both;
+  animation-duration: auto;
+  animation-timeline: scroll(root block);
+}
+
+.latar-catur[hidden] {
+  display: none;
+}
+
+/* Masuk saat digulir: digeser, bukan di-fade. Tanpa JavaScript blok ini
+   tetap di posisi akhirnya. */
+@media (prefers-reduced-motion: no-preference) {
+  .slam {
+    transition:
+      translate 160ms steps(4, end),
+      box-shadow 160ms steps(4, end);
+  }
+
+  .slam:not(.tiba) {
+    translate: -10px -10px;
+    box-shadow: 0 0 0 0 var(--hitam);
+  }
+}
+
+/* Baris yang barusan dikoreksi berkedip kuning sekali. Ini satu-satunya
+   gerak di halaman yang menjawab aksi user, bukan hiasan: dari 161 baris,
+   yang berubah perlu ketahuan yang mana. */
+@keyframes kedip {
+  0%,
+  60% {
+    background: var(--kuning);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+tr.dikedipkan td {
+  animation: kedip 900ms steps(6, end) 1;
+}
+
+/* Halaman ini tidak beranimasi sama sekali; baris ini menjaga kalau nanti ada
+   yang menambahkan sesuatu tanpa memikirkannya. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+    translate: none !important;
+    rotate: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  main {
+    padding: 1rem 0.75rem 2rem;
+  }
+  /* Bar yang nempel memakan tinggi layar terus-terusan, jadi di ponsel
+     dirapatkan sampai muat satu baris: logo, lalu tautan seksi. */
+  .puncak-isi {
+    padding: 0.4rem 0.75rem;
+    gap: 0.3rem;
+    flex-wrap: nowrap;
+  }
+  .logo {
+    height: 26px;
+  }
+  .nav {
+    gap: 0.15rem;
+  }
+  .nav a {
+    font-size: 9px;
+    padding: 0.25rem 0.3rem;
+  }
+  /* Di layar sempit bintangnya ditarik masuk — menonjol keluar di sini
+     berarti ujungnya kepotong, bukan terlihat berani. */
+  .hias-bintang {
+    top: -18px;
+    right: 0;
+  }
+  /* Nama dan tautan tidak muat sebaris di lebar ponsel — dipaksa sebaris,
+     yang terjadi ujung "Instagram" kepotong. */
+  .kaki {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+  section[id],
+  main {
+    scroll-margin-top: 3.5rem;
+  }
+  .sambutan {
+    padding: 1.1rem 0.9rem;
+  }
+  th,
+  td {
+    padding: 0.3rem 0.4rem;
+  }
+  .kartu .bungkus {
+    margin: 0 -1rem;
+  }
+}
