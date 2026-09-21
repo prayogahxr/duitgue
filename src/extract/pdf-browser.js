@@ -12,6 +12,17 @@
  */
 import * as pdfjs from 'pdfjs-dist/build/pdf.mjs';
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?worker';
+import { pasangIteratorStream } from './stream-iterator.js';
+
+// WAJIB dipasang sebelum pdf.js dipakai.
+//
+// `getTextContent()` di pdf.js melakukan `for await (const v of stream)`, dan
+// Safari belum mengimplementasikan iterator asinkron pada ReadableStream.
+// Tanpa tambalan ini, SETIAP pembacaan PDF di iPhone gagal dengan
+// "undefined is not a function", sementara Android dan desktop baik-baik
+// saja dari berkas yang sama. Di browser yang sudah punya, fungsi ini tidak
+// mengubah apa pun.
+pasangIteratorStream();
 
 // workerPort, bukan workerSrc: workerSrc menuntut URL yang bisa diambil saat
 // runtime, sementara ini instance worker yang sudah dibundel ikut aplikasi.

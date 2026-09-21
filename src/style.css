@@ -847,6 +847,17 @@ select.kategori {
   font-weight: 700;
 }
 
+/* Pesan error panjang dan tidak berspasi. Tanpa ini ujungnya terpotong di
+   layar ponsel — persis bagian yang paling dibutuhkan. */
+.pesan-error {
+  font-family: var(--angka);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
+}
+
 /* --- Status per berkas --------------------------------------------------- */
 
 tr.gagal td {

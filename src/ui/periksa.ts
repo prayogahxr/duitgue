@@ -34,6 +34,41 @@ function pdfContoh(): Uint8Array {
 
 const ada = (b: boolean) => (b ? 'ada' : 'TIDAK ADA')
 
+/**
+ * Fungsi-fungsi bawaan yang dipakai pdf.js dan baru ada di browser yang
+ * cukup baru. Satu saja yang hilang, dan yang muncul cuma
+ * "TypeError: undefined is not a function" — tanpa menyebut siapa.
+ *
+ * Tiap baris diperiksa dengan cara yang tidak melempar kalau tidak ada.
+ */
+function fungsiModern(): Array<[string, string]> {
+  const cek: Array<[string, () => boolean]> = [
+    ['Promise.withResolvers', () => typeof (Promise as any).withResolvers === 'function'],
+    ['Object.groupBy', () => typeof (Object as any).groupBy === 'function'],
+    ['Map.groupBy', () => typeof (Map as any).groupBy === 'function'],
+    ['Array.fromAsync', () => typeof (Array as any).fromAsync === 'function'],
+    ['Array#toSorted', () => typeof [].toSorted === 'function'],
+    ['Array#at', () => typeof [].at === 'function'],
+    ['Iterator helpers', () => typeof ([].values() as any).map === 'function'],
+    ['structuredClone', () => typeof structuredClone === 'function'],
+    ['URL.canParse', () => typeof (URL as any).canParse === 'function'],
+    ['AbortSignal.any', () => typeof (AbortSignal as any).any === 'function'],
+    ['OffscreenCanvas', () => typeof OffscreenCanvas !== 'undefined'],
+    ['ImageDecoder', () => typeof (globalThis as any).ImageDecoder !== 'undefined'],
+    ['WeakRef', () => typeof WeakRef === 'function'],
+    ['String#replaceAll', () => typeof ''.replaceAll === 'function'],
+  ]
+  return cek.map(([nama, uji]) => {
+    let ok = false
+    try {
+      ok = uji()
+    } catch {
+      ok = false
+    }
+    return [nama, ada(ok)] as [string, string]
+  })
+}
+
 function dukungan() {
   let idb = false
   try {
@@ -81,12 +116,21 @@ export function pasangPeriksa(el: HTMLElement) {
       // Nama dan pesan errornya dibawa apa adanya. Inilah satu-satunya
       // keterangan yang berguna untuk perangkat yang tidak bisa dibuka
       // pengembangnya.
+      // Pesan DAN baris pertama tumpukan panggilan. Nama fungsi di tumpukan
+      // itu yang menunjuk fungsi bawaan mana yang hilang; tanpa itu,
+      // "undefined is not a function" tidak menyebut siapa.
+      const tumpukan = String(e?.stack ?? '')
+        .split('\n')
+        .slice(0, 3)
+        .join(' | ')
+        .slice(0, 300)
       baris = `<p><strong>Mesin PDF gagal jalan di perangkat ini.</strong></p>
-        <p class="angka">${String(e?.name ?? 'Error')}: ${String(e?.message ?? e).slice(0, 200)}</p>`
+        <p class="pesan-error">${String(e?.name ?? 'Error')}: ${String(e?.message ?? e).slice(0, 300)}</p>
+        ${tumpukan ? `<p class="pesan-error sekunder">${tumpukan}</p>` : ''}`
     }
 
-    const tabel = dukungan()
-      .map(([n, v]) => `<tr><td>${n}</td><td>${v}</td></tr>`)
+    const tabel = [...dukungan(), ...fungsiModern()]
+      .map(([n, v]) => `<tr><td>${n}</td><td>${v === 'ada' ? v : `<strong>${v}</strong>`}</td></tr>`)
       .join('')
 
     hasil.innerHTML = `${baris}
