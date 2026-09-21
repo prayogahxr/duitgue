@@ -30,17 +30,50 @@ import { tagBcaTransfers, tagGopayTransfers, matchTransfers, realSpending, realI
  *   }
  * }}
  */
+/**
+ * Bukti bentuk berkas untuk berkas yang sumbernya tidak dikenali.
+ *
+ * Tidak memuat satu pun potongan teks statement. Yang dilaporkan cuma angka
+ * dan jawaban ya/tidak, supaya aman ditunjukkan ke orang lain saat minta
+ * bantuan.
+ */
+export function diagnosaSumber(items) {
+  const halaman = items.length ? Math.max(...items.map((i) => i.page)) : 0;
+  const teks1 = items
+    .filter((i) => i.page === 1)
+    .map((i) => i.str)
+    .join('\n');
+  return {
+    halaman,
+    jumlahItem: items.length,
+    itemHalaman1: items.filter((i) => i.page === 1).length,
+    // PDF hasil pindaian atau cetak-ke-gambar tidak punya lapisan teks sama
+    // sekali. Ini sebab paling sering di balik "tidak dikenali".
+    tanpaLapisanTeks: items.length === 0,
+    penandaBca: /REKENING TAHAPAN|NO\. REKENING/.test(teks1),
+    penandaGopay: /Total Coins didapatkan|Total Coins dipakai/.test(teks1),
+  };
+}
+
 export async function ingest(berkas) {
   const hasil = [];
 
   for (const b of berkas) {
     const parser = kenaliSumber(b.items);
     if (!parser) {
+      // "Tidak dikenali" tanpa keterangan adalah jalan buntu: user tidak bisa
+      // tahu apakah berkasnya salah, PDF-nya hasil scan, atau parsernya yang
+      // tidak cocok. Yang dibawa di sini BENTUK berkasnya, bukan isinya —
+      // jumlah halaman, jumlah potongan teks, dan penanda mana yang ketemu.
+      // Sengaja tanpa cuplikan teks: baris pertama statement memuat nama dan
+      // nomor rekening, dan itu tidak boleh muncul di layar hasil yang
+      // gampang di-screenshot.
       hasil.push({
         nama: b.nama,
         sumber: null,
         ok: false,
         alasan: 'sumber-tak-dikenali',
+        diagnosa: diagnosaSumber(b.items),
         checks: [],
         transactions: [],
       });

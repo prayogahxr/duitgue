@@ -16,6 +16,7 @@ import { renderKoreksi } from './ui/koreksi.js'
 import { renderProyeksi } from './ui/proyeksi.js'
 import { amatiGerak } from './ui/gerak.js'
 import { pasangNav, segarkanNav } from './ui/nav.js'
+import { pasangPeriksa } from './ui/periksa.js'
 
 const form = document.querySelector<HTMLFormElement>('#form')!
 const inputBerkas = document.querySelector<HTMLInputElement>('#berkas')!
@@ -47,6 +48,47 @@ const tanggal = (d: Date | null) =>
   d
     ? `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`
     : ''
+
+/**
+ * Isi kolom "Sumber".
+ *
+ * Dulu kolom ini menulis "tidak dikenali" untuk SETIAP berkas yang sumbernya
+ * null — termasuk berkas yang bahkan belum pernah berhasil dibuka karena
+ * terkunci sandi. Akibatnya statement BCA yang cuma kurang sandi terbaca
+ * seolah formatnya tidak dikenali, dan user mengejar masalah yang salah.
+ *
+ * Berkas yang gagal dibuka tidak punya sumber karena isinya belum pernah
+ * dilihat. Itu beda dari sudah dilihat tapi tidak cocok.
+ */
+function sumberBerkas(f: any): string {
+  if (f.sumber) return f.sumber
+  if (f.alasan === 'gagal-parse') return '—'
+  return 'tidak dikenali'
+}
+
+/**
+ * Kenapa sebuah berkas tidak dikenali.
+ *
+ * Bedanya besar buat user: PDF hasil pindaian tidak akan pernah bisa dibaca
+ * berapa kali pun dicoba, sementara PDF yang teksnya ada tapi penandanya
+ * tidak cocok berarti berkasnya jenis lain. Dua-duanya dulu dijawab kalimat
+ * yang sama, dan itu jalan buntu.
+ */
+function jelaskanTakDikenali(d: any): string {
+  if (!d) return 'Bukan mutasi BCA atau GoPay. Nggak dimasukin.'
+  if (d.tanpaLapisanTeks) {
+    return (
+      'PDF-nya nggak punya teks sama sekali — kemungkinan hasil scan atau ' +
+      'foto yang dijadiin PDF. Yang dibutuhin statement asli hasil unduhan ' +
+      'dari BCA atau GoPay, bukan hasil cetak ulang. Nggak dimasukin.'
+    )
+  }
+  return (
+    `Teksnya kebaca (${d.jumlahItem} potongan, ${d.halaman} halaman), tapi ` +
+    'nggak ada penanda BCA maupun GoPay di halaman pertama. Mungkin ini ' +
+    'jenis statement lain. Nggak dimasukin.'
+  )
+}
 
 /** Kalimat untuk tiap pemeriksaan yang gagal, lengkap dengan selisihnya. */
 function jelaskanGagal(checks: any[]): string {
@@ -86,7 +128,7 @@ function render(hasil: any) {
       if (f.ok) {
         ket = `${f.checks.length} pemeriksaan lolos`
       } else if (f.alasan === 'sumber-tak-dikenali') {
-        ket = 'Bukan mutasi BCA atau GoPay. Nggak dimasukin.'
+        ket = jelaskanTakDikenali(f.diagnosa)
       } else if (f.alasan === 'gagal-parse') {
         ket = `Nggak kebaca: ${esc(f.pesan)}. Nggak dimasukin.`
       } else {
@@ -95,7 +137,7 @@ function render(hasil: any) {
       const periode = f.periode?.month ? `${f.periode.month}/${f.periode.year}` : ''
       return `<tr class="${kelas}">
         <td>${esc(f.nama)}</td>
-        <td>${esc(f.sumber ?? 'tidak dikenali')}</td>
+        <td>${esc(sumberBerkas(f))}</td>
         <td>${esc(periode)}</td>
         <td>${f.ok ? 'Lulus' : 'Ditolak'}</td>
         <td class="angka">${f.ok ? f.transactions.length : 0}</td>
@@ -310,7 +352,26 @@ form.addEventListener('submit', async (e) => {
     // extractItems menyalin sendiri, tapi menahan satu buffer besar untuk
     // semua berkas tidak ada gunanya.
     try {
-      const items = await extractItems(new Uint8Array(await f.arrayBuffer()), sandi)
+      // Bytenya diperiksa SEBELUM diserahkan ke pdf.js.
+      //
+      // Di iOS, berkas yang dipilih dari Files bisa berupa penanda iCloud
+      // yang isinya belum ada di perangkat, dan yang terbaca jadi kosong.
+      // Diserahkan begitu saja ke pdf.js, hasilnya cuma "gagal dibaca" tanpa
+      // sebab. Dua pemeriksaan murah ini menjawabnya langsung, dan tidak
+      // satu pun menyentuh isi statement — cuma panjang dan lima huruf
+      // pertama yang wajib ada di tiap PDF.
+      const buf = await f.arrayBuffer()
+      if (buf.byteLength === 0) {
+        throw Object.assign(new Error('berkas terbaca kosong (0 byte)'), { name: 'BerkasKosong' })
+      }
+      const kepala = new TextDecoder().decode(new Uint8Array(buf.slice(0, 5)))
+      if (kepala !== '%PDF-') {
+        throw Object.assign(
+          new Error(`${(buf.byteLength / 1024).toFixed(0)} kB terbaca, tapi awalannya "${kepala}", bukan "%PDF-"`),
+          { name: 'BukanPdf' },
+        )
+      }
+      const items = await extractItems(new Uint8Array(buf), sandi)
       terbaca.push({ nama: f.name, items })
     } catch (err) {
       const jenis = classifyError(err)
@@ -324,7 +385,11 @@ form.addEventListener('submit', async (e) => {
               ? 'sandi yang dimasukkan tidak cocok'
               : jenis === 'bukan-pdf'
                 ? 'berkas ini bukan PDF yang bisa dibaca'
-                : 'berkas gagal dibuka',
+                : // Kegagalan yang tidak dikenali dibawa apa adanya, lengkap
+                  // dengan nama errornya. Di perangkat yang tidak bisa dibuka
+                  // pengembangnya, kalimat ini satu-satunya petunjuk yang ada.
+                  // Pesan pdf.js tidak pernah memuat isi statement.
+                  `berkas gagal dibuka (${(err as any)?.name ?? 'Error'}: ${String((err as any)?.message ?? err).slice(0, 160)})`,
       })
     }
   }
@@ -332,11 +397,22 @@ form.addEventListener('submit', async (e) => {
   // Field sandi baru muncul kalau memang ada yang memintanya — layar unggah
   // tidak perlu menampilkan kolom yang mayoritas berkas tidak butuh.
   blokSandi.hidden = !adaYangMintaSandi
-  if (adaYangMintaSandi) inputSandi.focus()
+  if (adaYangMintaSandi) {
+    // Di layar ponsel, kolom sandi bisa berada di luar layar saat muncul —
+    // fokus saja tidak cukup, karena papan ketik virtual tidak selalu ikut
+    // menggulung halaman. Tanpa ini, statement BCA yang terkunci terlihat
+    // seperti gagal tanpa sebab.
+    blokSandi.scrollIntoView({ block: 'center' })
+    inputSandi.focus()
+  }
 
   const hasil = await ingest(terbaca)
   for (const g of gagalBaca) {
-    hasil.berkas.unshift({ nama: g.nama, sumber: null, ok: false, alasan: 'gagal-parse', pesan: g.sebab, checks: [], transactions: [] })
+    // `as any`: bentuk baris "gagal dibaca" memang beda dari baris hasil
+    // ingest — tidak punya diagnosa, punya `pesan`. Menyatukan keduanya jadi
+    // satu tipe akan memaksa tiap baris membawa field yang tidak relevan
+    // untuknya.
+    hasil.berkas.unshift({ nama: g.nama, sumber: null, ok: false, alasan: 'gagal-parse', pesan: g.sebab, checks: [], transactions: [] } as any)
   }
   hasil.ringkasan.fileDitolak = hasil.berkas.filter((f: any) => !f.ok).length
 
@@ -362,3 +438,4 @@ gambarTersimpan().then((t) => {
 amatiGerak()
 
 pasangNav()
+pasangPeriksa(document.querySelector<HTMLElement>('#periksa')!)

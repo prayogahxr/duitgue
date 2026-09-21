@@ -829,6 +829,24 @@ select.kategori {
   outline-offset: 2px;
 }
 
+/* Kolom sandi baru muncul setelah ada berkas yang memintanya, dan saat itu
+   dia satu-satunya hal yang perlu dikerjakan user. Di layar ponsel kolom
+   polos gampang terlewat di antara tombol-tombol lain, jadi diberi warna
+   yang sama dengan blok "perlu dibaca" di halaman ini. */
+#sandi-blok:not([hidden]) {
+  display: block;
+  background: var(--kuning);
+  border: var(--tebal) solid var(--hitam);
+  border-radius: var(--radius);
+  box-shadow: var(--bayang-kecil);
+  padding: 0.6rem 0.7rem;
+  margin-bottom: 0.75rem;
+}
+
+#sandi-blok label {
+  font-weight: 700;
+}
+
 /* --- Status per berkas --------------------------------------------------- */
 
 tr.gagal td {

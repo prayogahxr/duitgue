@@ -75,6 +75,17 @@ export default defineConfig({
   // di https://<user>.github.io/<repo>/, dan jalur absolut akan mencari
   // /assets/... di akar domain, bukan di dalam subfoldernya.
   base: './',
+  // Worker klasik, bukan module worker.
+  //
+  // Bawaannya Vite membangun worker sebagai modul dan memanggilnya dengan
+  // `new Worker(url, { type: 'module' })`. Safari baru mendukung itu di iOS
+  // 16.4; di bawah itu worker-nya gagal dijalankan, pdf.js kehilangan
+  // mesinnya, dan tiap berkas berakhir sebagai "gagal dibaca" tanpa sebab
+  // yang kelihatan.
+  //
+  // Berkas worker pdf.js yang dibundel tidak punya satu pun `import`, jadi
+  // tidak ada yang hilang dengan menjadikannya klasik.
+  worker: { format: 'iife' },
   plugins: [suntikCsp()],
   test: {
     // Sengaja tanpa passWithNoTests: kalau fixture atau berkas test hilang,

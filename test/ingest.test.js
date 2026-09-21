@@ -159,3 +159,35 @@ describe('Mengenali tarik saldo ke rekening sendiri', () => {
     expect(tag('Ditransfer ke R*****')).toBe(false);
   });
 });
+
+describe('diagnosa berkas yang sumbernya tidak dikenali', () => {
+  it('menandai PDF tanpa lapisan teks', async () => {
+    const h = await ingest([{ nama: 'scan.pdf', items: [] }]);
+    const f = h.berkas[0];
+    expect(f.alasan).toBe('sumber-tak-dikenali');
+    expect(f.diagnosa.tanpaLapisanTeks).toBe(true);
+    expect(f.diagnosa.jumlahItem).toBe(0);
+  });
+
+  it('membedakan PDF berteks yang penandanya tidak cocok', async () => {
+    const items = [
+      { page: 1, x: 10, y: 700, str: 'LAPORAN REKENING KORAN' },
+      { page: 1, x: 10, y: 680, str: 'Bank lain, format lain' },
+      { page: 2, x: 10, y: 700, str: 'halaman dua' },
+    ];
+    const f = (await ingest([{ nama: 'lain.pdf', items }])).berkas[0];
+    expect(f.diagnosa.tanpaLapisanTeks).toBe(false);
+    expect(f.diagnosa.jumlahItem).toBe(3);
+    expect(f.diagnosa.halaman).toBe(2);
+    expect(f.diagnosa.penandaBca).toBe(false);
+    expect(f.diagnosa.penandaGopay).toBe(false);
+  });
+
+  it('diagnosanya tidak memuat satu pun potongan teks statement', async () => {
+    const items = [{ page: 1, x: 10, y: 700, str: 'PRAYOGA RAMADHANI 1234567890' }];
+    const f = (await ingest([{ nama: 'x.pdf', items }])).berkas[0];
+    const isi = JSON.stringify(f.diagnosa);
+    expect(isi).not.toMatch(/PRAYOGA/);
+    expect(isi).not.toMatch(/1234567890/);
+  });
+});

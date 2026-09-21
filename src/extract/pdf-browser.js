@@ -30,7 +30,26 @@ export async function extractItems(data, password) {
   // punya data lagi. Jadi salinannya dibuat di sini, sekali per panggilan.
   const src = data instanceof Uint8Array ? data : new Uint8Array(data);
   const bytes = src.slice();
-  const doc = await pdfjs.getDocument({ data: bytes, password, useSystemFonts: true }).promise;
+  // Seluruh setelan di bawah ini punya satu tujuan: pdf.js tidak boleh
+  // menyentuh jaringan dan tidak boleh butuh `eval`.
+  //
+  // Situs yang terbit memasang `connect-src 'none'` dan `script-src 'self'`.
+  // Di dev server keduanya tidak ada, dan pdf.js yang diam-diam mengambil
+  // data font atau CMap dari `node_modules` akan berhasil — lalu gagal
+  // begitu aplikasinya terbit, karena berkas itu tidak ikut ke hasil build
+  // dan permintaannya diblokir. Bedanya cuma muncul di produksi, dan itu
+  // jenis kesalahan paling mahal.
+  //
+  //   useSystemFonts   mematikan pencarian data font standar
+  //   disableFontFace  kita cuma mengambil teks, tidak pernah menggambar
+  //   isEvalSupported  jangan pernah pakai `new Function`
+  const doc = await pdfjs.getDocument({
+    data: bytes,
+    password,
+    useSystemFonts: false,
+    disableFontFace: true,
+    isEvalSupported: false,
+  }).promise;
   const items = [];
   for (let p = 1; p <= doc.numPages; p++) {
     const page = await doc.getPage(p);
